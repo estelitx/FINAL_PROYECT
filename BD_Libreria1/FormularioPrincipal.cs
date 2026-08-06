@@ -5,7 +5,7 @@ namespace BD_Libreria1;
 
 public class FormularioPrincipal : Form
 {
-    // Estos son los controles que se muestran en la ventana.
+    // Estos son los controles que aparecen en la ventana: la tabla, la lista y los botones.
     private ComboBox comboTablas = new ComboBox();
     private DataGridView tablaDatos = new DataGridView();
     private Button botonCargar = new Button();
@@ -14,13 +14,14 @@ public class FormularioPrincipal : Form
     private Button botonEliminar = new Button();
     private Label textoEstado = new Label();
 
-    // Aquí guardo temporalmente los datos que vienen de SQL Server.
+    // Los datos se guardan aquí de forma temporal mientras están visibles en la cuadrícula.
+    // El adaptador es el que, por así decirlo, comunica esa información con SQL Server.
     private DataTable datos = new DataTable();
     private SqlDataAdapter? adaptador;
 
     public FormularioPrincipal()
     {
-        // Configuración básica de la ventana principal.
+        // Configuración general de la ventana, como tamaño, título, posición y color.
         Text = "Sistema de Biblioteca";
         StartPosition = FormStartPosition.CenterScreen;
         Size = new Size(1100, 650);
@@ -33,7 +34,7 @@ public class FormularioPrincipal : Form
 
     private void CrearInterfaz()
     {
-        // Este título ayuda a identificar rápidamente el programa.
+        // Título que aparece arriba para identificar la aplicación.
         Label titulo = new Label();
         titulo.Text = "Administración de Biblioteca";
         titulo.Dock = DockStyle.Top;
@@ -43,7 +44,7 @@ public class FormularioPrincipal : Form
         titulo.ForeColor = Color.White;
         titulo.BackColor = Color.FromArgb(30, 36, 48);
 
-        // En esta barra coloqué la selección de tabla y los botones principales.
+        // En esta barra van la selección de tablas y los botones que usa el CRUD.
         FlowLayoutPanel barra = new FlowLayoutPanel();
         barra.Dock = DockStyle.Top;
         barra.Height = 55;
@@ -62,7 +63,7 @@ public class FormularioPrincipal : Form
         comboTablas.SelectedIndexChanged += CambiarTabla;
 
         PrepararBoton(botonCargar, "Cargar", Color.FromArgb(70, 78, 92));
-        PrepararBoton(botonNuevo, "Nueva fila", Color.FromArgb(70, 78, 92));
+        PrepararBoton(botonNuevo, "Agregar registro", Color.FromArgb(70, 78, 92));
         PrepararBoton(botonGuardar, "Guardar", Color.FromArgb(38, 132, 90));
         PrepararBoton(botonEliminar, "Eliminar", Color.FromArgb(170, 65, 65));
 
@@ -82,7 +83,7 @@ public class FormularioPrincipal : Form
         barra.Controls.Add(botonEliminar);
         barra.Controls.Add(textoEstado);
 
-        // El DataGridView imprime los registros y también permite editar sus celdas.
+        // El DataGridView muestra lo que viene de SQL Server y también deja editar las celdas.
         tablaDatos.Dock = DockStyle.Fill;
         tablaDatos.BackgroundColor = Color.White;
         tablaDatos.BorderStyle = BorderStyle.None;
@@ -98,7 +99,7 @@ public class FormularioPrincipal : Form
 
     private void PrepararBoton(Button boton, string texto, Color color)
     {
-        // Todos los botones usan el mismo estilo para que la interfaz se vea ordenada.
+        // Este método evita repetir el estilo de cada botón, nada más recibe el texto y el color.
         boton.Text = texto;
         boton.AutoSize = true;
         boton.Height = 32;
@@ -113,14 +114,16 @@ public class FormularioPrincipal : Form
     {
         try
         {
-            // Tomo la tabla seleccionada y hago un SELECT directo a SQL Server.
+            // Se toma la tabla elegida y se arma un SELECT para traer todos sus registros.
+            // El nombre sale de la lista del programa, entonces el usuario no lo escribe manualmente.
             string nombreTabla = comboTablas.Text;
             string consulta = "SELECT * FROM dbo.[" + nombreTabla + "]";
 
             SqlConnection conexion = ConexionBiblioteca.CrearConexion();
             adaptador = new SqlDataAdapter(consulta, conexion);
 
-            // El CommandBuilder crea los comandos INSERT, UPDATE y DELETE automáticamente.
+            // El CommandBuilder crea los comandos para actualizar o eliminar, básicamente
+            // usando como referencia el SELECT que se hizo arriba.
             SqlCommandBuilder comandos = new SqlCommandBuilder(adaptador);
             comandos.QuotePrefix = "[";
             comandos.QuoteSuffix = "]";
@@ -143,7 +146,7 @@ public class FormularioPrincipal : Form
 
     private void BloquearColumnaId()
     {
-        // Los ID los genera SQL Server, por eso el usuario no debe escribirlos.
+        // La primera columna es el ID. Se deja bloqueada porque ese número lo pone SQL Server.
         if (tablaDatos.Columns.Count > 0)
         {
             tablaDatos.Columns[0].ReadOnly = true;
@@ -153,17 +156,25 @@ public class FormularioPrincipal : Form
 
     private void AgregarFila()
     {
-        // Creo una fila vacía para que el usuario capture los datos desde la tabla.
-        DataRow filaNueva = datos.NewRow();
-        datos.Rows.Add(filaNueva);
-        textoEstado.Text = "Completa la fila nueva y presiona Guardar";
+        // Al agregar se abre otra ventana con los campos que necesita la tabla seleccionada.
+        // Cuando termina se vuelven a cargar los datos para que aparezca el registro nuevo.
+        string nombreTabla = comboTablas.Text;
+        FormularioRegistro formulario = new FormularioRegistro(nombreTabla);
+
+        DialogResult resultado = formulario.ShowDialog();
+
+        if (resultado == DialogResult.OK)
+        {
+            CargarDatos();
+            textoEstado.Text = "Registro agregado correctamente";
+        }
     }
 
     private void GuardarDatos()
     {
         try
         {
-            // Finalizo la edición de la celda actual antes de enviar los cambios.
+            // EndEdit termina la edición de la celda actual antes de mandar los cambios.
             tablaDatos.EndEdit();
 
             if (adaptador == null)
@@ -183,7 +194,8 @@ public class FormularioPrincipal : Form
 
     private void EliminarFila()
     {
-        // Primero confirmo la acción para evitar borrar un registro por accidente.
+        // Antes de eliminar se revisa que haya una fila seleccionada y se pregunta al usuario.
+        // Ojo: el cambio se manda realmente a SQL Server cuando se presiona Guardar.
         if (tablaDatos.CurrentRow == null)
         {
             return;
@@ -208,7 +220,7 @@ public class FormularioPrincipal : Form
         MessageBox.Show(mensaje, "Biblioteca", MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
 
-    // Estos eventos llaman a los métodos anteriores cuando el usuario usa la interfaz.
+    // Estos eventos conectan los clics de los botones con los métodos que hacen cada acción.
     private void CambiarTabla(object? sender, EventArgs e) { CargarDatos(); }
     private void CargarClick(object? sender, EventArgs e) { CargarDatos(); }
     private void NuevoClick(object? sender, EventArgs e) { AgregarFila(); }
