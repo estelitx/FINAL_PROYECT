@@ -2,28 +2,20 @@ using Microsoft.Data.SqlClient;
 
 namespace BD_Libreria1;
 
+// En esta clase dejé únicamente la conexión para no repetirla en todo el programa.
 public static class ConexionBiblioteca
 {
-    private const string VariableDeEntorno = "BIBLIOTECA_CONNECTION_STRING";
-
-    private const string ConexionLocalPredeterminada =
-        @"Server=.\SQLEXPRESS;Database=BIBLIOTECA;Integrated Security=True;TrustServerCertificate=True;";
-
-    public static string ObtenerCadenaConexion()
-    {
-        return Environment.GetEnvironmentVariable(VariableDeEntorno)
-            ?? ConexionLocalPredeterminada;
-    }
-
     public static SqlConnection CrearConexion()
     {
-        return new SqlConnection(ObtenerCadenaConexion());
-    }
+        // Primero busco una conexión personal. Esto permite que cada compañero use su servidor.
+        string? conexionPersonal = Environment.GetEnvironmentVariable("BIBLIOTECA_CONNECTION_STRING");
 
-    public static async Task ProbarConexionAsync()
-    {
-        await using SqlConnection conexion = CrearConexion();
-        await conexion.OpenAsync();
+        // Si no hay una conexión personal, uso SQL Server Express de esta computadora.
+        string conexionLocal = @"Server=.\SQLEXPRESS;Database=BIBLIOTECA;Integrated Security=True;TrustServerCertificate=True;";
+
+        string cadenaConexion = conexionPersonal ?? conexionLocal;
+        SqlConnection conexion = new SqlConnection(cadenaConexion);
+
+        return conexion;
     }
 }
-
