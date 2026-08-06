@@ -1,0 +1,16 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Compilacion .NET
+**/bin/
+**/obj/
+
+# Configuracion local y secretos
+.env
+.env.*
+!.env.example
+appsettings.Development.json
+appsettings.Local.json
+
